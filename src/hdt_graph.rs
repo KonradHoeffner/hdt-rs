@@ -1,34 +1,34 @@
+//use resiter::filter::*;
+//use resiter::map::*;
+use sophia::dataset::adapter::GraphAsDataset;
+//use sophia::term::matcher::TermMatcher;
+use sophia::term::{term_eq, Term, TTerm, TermKind};
+use sophia::triple::stream::*;
+use sophia::triple::streaming_mode::*;
+use sophia::triple::*;
+use sophia::graph::{Graph, GTripleSource };
 use std::collections::HashSet;
-use std::hash::Hash;
-
-use resiter::filter::*;
-use resiter::map::*;
-
-use crate::dataset::adapter::GraphAsDataset;
-use crate::term::matcher::TermMatcher;
-use crate::term::{term_eq, TTerm, TermKind};
-use crate::triple::stream::*;
-use crate::triple::streaming_mode::*;
-use crate::triple::*;
-
 use std::error::Error;
+use std::fs::File;
+use std::hash::Hash;
+use std::io::BufRead;
+use std::convert::Infallible;
+use crate::hdt_reader::HDTReader;
 
-struct HdtGraph {}
+struct HdtGraph<'a>
+{
+    reader: HDTReader<'a>,
+}
 
-impl HdtGraph {
-    fn from_reader(r: impl BufRead) -> Self {
-        HdtGraph {}
+impl HdtGraph<'_> {
+    fn read(r: impl BufRead) -> Self {
+        HdtGraph {reader: HDTReader::new(r)}
     }
 }
+impl Graph for HdtGraph<'_> {
+    type Triple = ByRef<[Term<String>; 3]>;
+    type Error = Infallible; // infallible for now, figure out what to put here later
 /*
-impl Graph for HdtGraph {
-    /// Determine the type of [`Triple`](../triple/trait.Triple.html)s
-    /// that the methods of this graph will yield
-    /// (see [`streaming_mode`](../triple/streaming_mode/index.html)
-    type Triple: TripleStreamingMode;
-    /// The error type that this graph may raise.
-    type Error: 'static + Error;
-
     /// An iterator visiting all triples of this graph in arbitrary order.
     ///
     /// This iterator is fallible:
@@ -40,8 +40,8 @@ impl Graph for HdtGraph {
     /// The result of this method is an iterator,
     /// so it can be used in a `for` loop:
     /// ```
-    /// # use sophia_api::graph::Graph;
-    /// # use sophia_api::term::simple_iri::SimpleIri;
+    /// # use sophia::graph::Graph;
+    /// # use sophia::term::simple_iri::SimpleIri;
     /// # fn foo() -> Result<(), std::convert::Infallible> {
     /// # let graph = Vec::<[SimpleIri;3]>::new();
     /// for t in graph.triples() {
@@ -56,9 +56,9 @@ impl Graph for HdtGraph {
     /// [`TripleSource`](../triple/stream/trait.TripleSource.html),
     /// for example:
     /// ```
-    /// # use sophia_api::graph::Graph;
-    /// # use sophia_api::term::simple_iri::SimpleIri;
-    /// # use sophia_api::triple::stream::TripleSource;
+    /// # use sophia::graph::Graph;
+    /// # use sophia::term::simple_iri::SimpleIri;
+    /// # use sophia::triple::stream::TripleSource;
     /// # fn foo() -> Result<(), std::convert::Infallible> {
     /// # let graph = Vec::<[SimpleIri;3]>::new();
     /// graph.triples().for_each_triple(|t| {
@@ -67,7 +67,12 @@ impl Graph for HdtGraph {
     /// # Ok(())
     /// # }
     /// ```
-    fn triples(&self) -> GTripleSource<Self>;
+    */
+    fn triples(&self) -> GTripleSource<Self>
+    {
+        Box::new(it);
+    }
+/*
 
     /// An iterator visiting all triples with the given subject.
     ///
@@ -170,9 +175,9 @@ impl Graph for HdtGraph {
     /// The special `ANY` matcher can also be used to match anything.
     ///
     /// ```
-    /// # use sophia_api::graph::{Graph, GTerm};
-    /// # use sophia_api::ns::{Namespace, rdf};
-    /// # use sophia_api::triple::Triple;
+    /// # use sophia::graph::{Graph, GTerm};
+    /// # use sophia::ns::{Namespace, rdf};
+    /// # use sophia::triple::Triple;
     /// #
     /// # fn test<G>(graph: &G) -> Result<(), Box<dyn std::error::Error>>
     /// # where
@@ -180,7 +185,7 @@ impl Graph for HdtGraph {
     /// #     GTerm<G>: std::fmt::Display,
     /// # {
     /// #
-    /// use sophia_api::term::matcher::ANY;
+    /// use sophia::term::matcher::ANY;
     ///
     /// let s = Namespace::new("http://schema.org/")?;
     /// let city = s.get("City")?;
@@ -196,10 +201,10 @@ impl Graph for HdtGraph {
     /// for technical reasons, they must be enclosed in a 1-sized array.
     ///
     /// ```
-    /// # use sophia_api::graph::{Graph, GTerm};
-    /// # use sophia_api::ns::rdfs;
-    /// # use sophia_api::term::{TTerm, TermKind::Literal};
-    /// # use sophia_api::triple::Triple;
+    /// # use sophia::graph::{Graph, GTerm};
+    /// # use sophia::ns::rdfs;
+    /// # use sophia::term::{TTerm, TermKind::Literal};
+    /// # use sophia::triple::Triple;
     /// #
     /// # fn test<G>(graph: &G) -> Result<(), Box<dyn std::error::Error>>
     /// # where
@@ -207,7 +212,7 @@ impl Graph for HdtGraph {
     /// #     GTerm<G>: std::fmt::Display,
     /// # {
     /// #
-    /// use sophia_api::term::matcher::ANY;
+    /// use sophia::term::matcher::ANY;
     ///
     /// for t in graph.triples_matching(
     ///     &ANY,
@@ -416,8 +421,8 @@ pub trait MutableGraph: Graph {
     ///
     /// # Usage
     /// ```
-    /// # use sophia_api::ns::{Namespace, rdf, rdfs, xsd};
-    /// # use sophia_api::graph::{MutableGraph, MGResult};
+    /// # use sophia::ns::{Namespace, rdf, rdfs, xsd};
+    /// # use sophia::graph::{MutableGraph, MGResult};
     ///
     /// # fn populate<G: MutableGraph>(graph: &mut G) -> MGResult<G, ()> {
     /// let schema = Namespace::new("http://schema.org/").unwrap();
@@ -596,7 +601,17 @@ pub trait MutableGraph: Graph {
             .map_err(|err| err.unwrap_sink_error())?;
         Ok(())
     }
-}
 */
+}
 #[cfg(test)]
-mod test {}
+mod test {
+    use super::*;
+    use std::io::BufReader;
+
+    #[test]
+    fn graph() {
+        let file = File::open("tests/resources/swdf.hdt").expect("error opening file");
+        let mut reader = BufReader::new(file);
+        let graph = HdtGraph::read(reader);
+    }
+}
