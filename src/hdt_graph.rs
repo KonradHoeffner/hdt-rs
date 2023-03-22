@@ -6,12 +6,12 @@ use crate::triples::{Id, ObjectIter, PredicateIter, PredicateObjectIter, Subject
 use log::debug;
 
 use sophia::api::graph::{GTripleSource, Graph};
-
+use sophia::api::ns::xsd;
 use sophia::api::term::{matcher::TermMatcher, BnodeId, IriRef, LanguageTag, Term};
 use std::convert::Infallible;
 use std::io::{self, Error, ErrorKind};
 use std::iter;
-use std::sync::Arc;
+use std::rc::Rc;
 
 mod term;
 pub use term::HdtTerm;
@@ -61,7 +61,7 @@ impl HdtGraph {
 
 /// Create the correct Sophia term for a given resource string.
 /// Slow, use the appropriate method if you know which type (Literal, URI, or blank node) the string has.
-fn auto_term(s: Arc<str>) -> io::Result<HdtTerm> {
+fn auto_term(s: Rc<str>) -> io::Result<HdtTerm> {
     match s.chars().next() {
         None => Err(Error::new(ErrorKind::InvalidData, "empty input")),
         Some('"') => match s.rfind('"') {
@@ -70,15 +70,19 @@ fn auto_term(s: Arc<str>) -> io::Result<HdtTerm> {
                 format!("missing right quotation mark in literal string {s}"),
             )),
             Some(index) => {
-                let lex = Arc::from(&s[1..index]);
+                let lex = Rc::from(&s[1..index]);
                 let rest = &s[index + 1..];
                 // literal with no language tag and no datatype
                 if rest.is_empty() {
-                    return Ok(HdtTerm::LiteralDatatype(lex, term::XSD_STRING.clone()));
+                    // not ideal, xsd:string is allocated anew for each literal
+                    return Ok(HdtTerm::LiteralDatatype(
+                        lex,
+                        xsd::string.iriref().map_unchecked(|ms| Rc::from(ms.as_ref())),
+                    ));
                 }
                 // either language tag or datatype
                 if let Some(tag_index) = rest.find('@') {
-                    let tag = LanguageTag::new_unchecked(Arc::from(&rest[tag_index + 1..]));
+                    let tag = LanguageTag::new_unchecked(Rc::from(&rest[tag_index + 1..]));
                     return Ok(HdtTerm::LiteralLanguage(lex, tag));
                 }
                 // datatype
@@ -87,15 +91,15 @@ fn auto_term(s: Arc<str>) -> io::Result<HdtTerm> {
                 match dt_split.next() {
                     Some(dt) => {
                         let unquoted = &dt[1..dt.len() - 1];
-                        let dt = IriRef::new_unchecked(Arc::from(unquoted));
+                        let dt = IriRef::new_unchecked(Rc::from(unquoted));
                         Ok(HdtTerm::LiteralDatatype(lex, dt))
                     }
                     None => Err(Error::new(ErrorKind::InvalidData, format!("empty datatype in {s}"))),
                 }
             }
         },
-        Some('_') => Ok(HdtTerm::BlankNode(BnodeId::new_unchecked(Arc::from(&s[2..])))),
-        _ => Ok(HdtTerm::Iri(IriRef::new_unchecked(Arc::from(&s[..])))),
+        Some('_') => Ok(HdtTerm::BlankNode(BnodeId::new_unchecked(Rc::from(&s[2..])))),
+        _ => Ok(HdtTerm::Iri(IriRef::new_unchecked(Rc::from(&s[..])))),
     }
 }
 
@@ -181,7 +185,7 @@ impl Graph for HdtGraph {
                     Ok([
                         s.0.clone(),
                         self.id_term(t.predicate_id, &IdKind::Predicate),
-                        auto_term(Arc::from(self.hdt.dict.id_to_string(t.object_id, &IdKind::Object).unwrap()))
+                        auto_term(Rc::from(self.hdt.dict.id_to_string(t.object_id, &IdKind::Object).unwrap()))
                             .expect("auto term failed with object"),
                     ])
                 }))
@@ -199,7 +203,7 @@ impl Graph for HdtGraph {
             })),
             (None, None, Some(o)) => Box::new(ObjectIter::new(&self.hdt.triples, o.1).map(move |t| {
                 Ok([
-                    auto_term(Arc::from(self.hdt.dict.id_to_string(t.subject_id, &IdKind::Subject).unwrap()))
+                    auto_term(Rc::from(self.hdt.dict.id_to_string(t.subject_id, &IdKind::Subject).unwrap()))
                         .unwrap(),
                     self.id_term(t.predicate_id, &IdKind::Predicate),
                     o.0.clone(),
@@ -230,14 +234,14 @@ mod tests {
         let meta_top = "http://www.snik.eu/ontology/meta/Top";
         assert!(graph
             .triples_matching(
-                Some(HdtTerm::Iri(IriRef::new_unchecked(Arc::from("http://www.snik.eu/ontology/meta")))),
+                Some(HdtTerm::Iri(IriRef::new_unchecked(Rc::from("http://www.snik.eu/ontology/meta")))),
                 Any,
                 Any
             )
             .next()
             .is_some());
         for uri in [meta_top, "http://www.snik.eu/ontology/meta", "doesnotexist"] {
-            let term = HdtTerm::Iri(IriRef::new_unchecked(Arc::from(uri)));
+            let term = HdtTerm::Iri(IriRef::new_unchecked(Rc::from(uri)));
             let filtered: Vec<_> = triples
                 .iter()
                 .map(|triple| triple.as_ref().unwrap())

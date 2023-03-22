@@ -1,26 +1,28 @@
 //! I define [`HdtTerm`], an implementation of [`sophia::api::term::Term`].
-use sophia::api::ns::{rdf, xsd};
+use sophia::api::ns::rdf;
 use sophia::api::term::{BnodeId, LanguageTag, Term, TermKind};
 use sophia::api::MownStr;
 use sophia::iri::IriRef;
-use std::sync::Arc;
+use std::rc::Rc;
 
+/*
 lazy_static::lazy_static! {
-    pub static ref XSD_STRING: IriRef<Arc<str>> = xsd::string.iri().unwrap().map_unchecked(|m| Arc::from(m.as_ref()));
-    pub static ref RDF_LANG_STRING: IriRef<Arc<str>> = rdf::langString.iri().unwrap().map_unchecked(|m| Arc::from(m.as_ref()));
+    pub static ref XSD_STRING: Iri<Rc<str>> = xsd::string.iri().unwrap();
+    pub static ref RDF_LANG_STRING: Iri<Rc<str>> = rdf::langString.iri().unwrap();
 }
+*/
 
 /// An implementation of [`sophia::api::term::Term`] for [`HdtGraph`](super::HdtGraph).
 #[derive(Clone, Debug)]
 pub enum HdtTerm {
     /// This HdtTerm is an IRI
-    Iri(IriRef<Arc<str>>),
+    Iri(IriRef<Rc<str>>),
     /// This HdtTerm is a blank node
-    BlankNode(BnodeId<Arc<str>>),
+    BlankNode(BnodeId<Rc<str>>),
     /// This HdtTerm is a literal with a "standard" datatype
-    LiteralDatatype(Arc<str>, IriRef<Arc<str>>),
+    LiteralDatatype(Rc<str>, IriRef<Rc<str>>),
     /// This HdtTerm is a language string literal
-    LiteralLanguage(Arc<str>, LanguageTag<Arc<str>>),
+    LiteralLanguage(Rc<str>, LanguageTag<Rc<str>>),
 }
 
 impl HdtTerm {
@@ -106,6 +108,6 @@ impl PartialEq for HdtTerm {
 
 impl Eq for HdtTerm {}
 
-fn mown2arc(m: MownStr) -> Arc<str> {
-    Box::<str>::from(m.to_owned()).into()
+fn mown2arc(m: MownStr) -> Rc<str> {
+    Box::<str>::from(m).into()
 }
