@@ -263,6 +263,26 @@ mod tests {
     use std::result::Result;
 
     #[test]
+    fn test_ruthes() {
+        let file = File::open("tests/resources/ruthes.hdt").expect("error opening file");
+        let hdt = Hdt::new(std::io::BufReader::new(file)).unwrap();
+        let graph = HdtGraph::new(hdt);
+        let s = HdtTerm::Iri(IriRef::new_unchecked(
+            "http://lod.ruthes.org/resource/ruthes-lexicon-ru/entry/хобби-N-0".into(),
+        ));
+        let label = HdtTerm::Iri(IriRef::new_unchecked("http://www.w3.org/2000/01/rdf-schema#label".into()));
+        let o = HdtTerm::LiteralLanguage("ХОББИ".into(), LanguageTag::new_unchecked("ru".into()));
+        let tvec = vec![[s.clone(), label.clone(), o.clone()]];
+        assert_eq!(
+            tvec,
+            graph
+                .triples_matching([s.borrow_term()], [label.borrow_term()], Any)
+                .map(Result::unwrap)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn test_graph() {
         init();
         let file = File::open("tests/resources/snikmeta.hdt").expect("error opening file");
