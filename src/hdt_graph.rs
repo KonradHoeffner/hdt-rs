@@ -262,24 +262,37 @@ mod tests {
     use std::fs::File;
     use std::result::Result;
 
+    fn iri(s: &str) -> HdtTerm {
+        HdtTerm::Iri(IriRef::new_unchecked(s.into()))
+    }
+
+    // uncomment to test cyrillic URIs, requires local copy of ruthes.hdt
     #[test]
     fn test_ruthes() {
         let file = File::open("tests/resources/ruthes.hdt").expect("error opening file");
         let hdt = Hdt::new(std::io::BufReader::new(file)).unwrap();
         let graph = HdtGraph::new(hdt);
-        let s = HdtTerm::Iri(IriRef::new_unchecked(
-            "http://lod.ruthes.org/resource/ruthes-lexicon-ru/entry/хобби-N-0".into(),
-        ));
+        let collect = |triples: GTripleSource<HdtGraph>| triples.map(Result::unwrap).collect::<Vec<_>>();
         let label = HdtTerm::Iri(IriRef::new_unchecked("http://www.w3.org/2000/01/rdf-schema#label".into()));
-        let o = HdtTerm::LiteralLanguage("ХОББИ".into(), LanguageTag::new_unchecked("ru".into()));
+        /*
+        let triples: Vec<[HdtTerm; 3]> = graph.triples().map(Result::unwrap).collect();
+        println!("{:?}",triples.iter().filter(|v| v[2].lexical_form().unwrap_or("".into()).contains("ХОББИ")).collect::<Vec<_>>());
+
+        let s = iri("http://lod.ruthes.org/resource/form/lcd_дисплей-NG");
+        let o = HdtTerm::LiteralLanguage("LCD ДИСПЛЕЙ".into(), LanguageTag::new_unchecked("ru".into()));
         let tvec = vec![[s.clone(), label.clone(), o.clone()]];
-        assert_eq!(
-            tvec,
-            graph
-                .triples_matching([s.borrow_term()], [label.borrow_term()], Any)
-                .map(Result::unwrap)
-                .collect::<Vec<_>>()
-        );
+        assert_eq!(tvec, collect(graph.triples_matching([s.borrow_term()], [label.borrow_term()], [o.borrow_term()])));
+        assert_eq!(tvec, collect(graph.triples_matching(Any, [label.borrow_term()], [o.borrow_term()])));
+        */
+        let s2 = iri("http://lod.ruthes.org/resource/entry/хобби-N-0");
+        let o = HdtTerm::LiteralDatatype("ХОББИ".into(), term::XSD_STRING.clone());
+        println!("************************************************");
+        println!("hobby triples {:?}", collect(graph.triples_matching([s2.borrow_term()], Any, Any)));
+        println!("************************************************");
+        let tvec = vec![[s2.clone(), label.clone(), o.clone()]];
+        assert_eq!(tvec, collect(graph.triples_matching([s2.borrow_term()], [label.borrow_term()], Any)));
+        //assert_eq!(tvec, collect(graph.triples_matching([s2.borrow_term()], [label.borrow_term()], [o.borrow_term()])));
+        //assert_eq!(tvec, collect(graph.triples_matching(Any, [label.borrow_term()], [o.borrow_term()])));
     }
 
     #[test]

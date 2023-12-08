@@ -93,8 +93,8 @@ impl DictSectPFC {
                 break;
             } else {
                 let text = self.index_str(mid);
+                println!("low: {low}, mid: {}, high: {high} text: {} cmp: {:?}", mid, text, element.cmp(text));
                 element.cmp(text)
-                //println!("mid: {} text: {} cmp: {:?}", mid, text, cmp);
             };
             match cmp {
                 Ordering::Less => {
@@ -107,6 +107,10 @@ impl DictSectPFC {
                 Ordering::Equal => return ((mid * self.block_size) + 1) as Id,
             }
         }
+        for i in 0..30 {
+            println!("{}", self.index_str(mid - 5 + i));
+        }
+
         if high < mid {
             mid = high;
         }
