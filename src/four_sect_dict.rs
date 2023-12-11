@@ -89,8 +89,10 @@ impl FourSectDict {
         let shared_size = self.shared.num_strings();
         match id_kind {
             IdKind::Subject => {
+                println!("search shared");
                 let mut id = self.shared.string_to_id(s);
                 if id == 0 {
+                    println!("search subjects");
                     id = self.subjects.string_to_id(s);
                     if id > 0 {
                         id += shared_size as Id;

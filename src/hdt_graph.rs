@@ -284,15 +284,28 @@ mod tests {
         assert_eq!(tvec, collect(graph.triples_matching([s.borrow_term()], [label.borrow_term()], [o.borrow_term()])));
         assert_eq!(tvec, collect(graph.triples_matching(Any, [label.borrow_term()], [o.borrow_term()])));
         */
+        let hobby = "http://lod.ruthes.org/resource/entry/хобби-N-0";
         let s2 = iri("http://lod.ruthes.org/resource/entry/хобби-N-0");
         let o = HdtTerm::LiteralDatatype("ХОББИ".into(), term::XSD_STRING.clone());
         println!("************************************************");
-        println!("hobby triples {:?}", collect(graph.triples_matching([s2.borrow_term()], Any, Any)));
+        //println!("hobby triples {:?}", collect(graph.triples_matching([s2.borrow_term()], Any, Any)));
         println!("************************************************");
         let tvec = vec![[s2.clone(), label.clone(), o.clone()]];
         assert_eq!(tvec, collect(graph.triples_matching([s2.borrow_term()], [label.borrow_term()], Any)));
         //assert_eq!(tvec, collect(graph.triples_matching([s2.borrow_term()], [label.borrow_term()], [o.borrow_term()])));
         //assert_eq!(tvec, collect(graph.triples_matching(Any, [label.borrow_term()], [o.borrow_term()])));
+        // id 136377
+        let shared = &graph.hdt.dict.shared;
+        /*for i in 0..shared.num_strings() {
+            let s = shared.extract(i).unwrap();
+            if s==hobby {
+                println!(" found {s} at id {i}");
+            }
+        }*/
+        for i in 136360..136390 {
+            let s = shared.extract(i).unwrap();
+            println!("{s} at id {i}");
+        }
     }
 
     #[test]
