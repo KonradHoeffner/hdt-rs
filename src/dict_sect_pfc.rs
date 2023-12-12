@@ -130,40 +130,20 @@ impl DictSectPFC {
         delta
     }
 
-    fn pos_str(&self, pos: usize, slen: usize) -> &str {
-        assert!(
-            pos + slen < self.packed_data.len(),
-            "Invalid arguments pos_str({pos},{slen}), packed data len {}).",
-            self.packed_data.len()
-        );
-        if let Ok(s) = str::from_utf8(&self.packed_data[pos..pos + slen]) {
-            s
-        } else {
-            //println!("error merror");
-            println!(
-                "invalid UTF8, skipping a byte {}",
-                String::from_utf8_lossy(&self.packed_data[pos..pos + slen])
-            );
-            self.pos_str(pos + 1, slen)
-        }
-    }
-
     fn locate_in_block(&self, block: usize, element: &str) -> usize {
         if block >= self.sequence.entries {
             return 0;
         }
         let block = block;
-        println!("locating element {element} in block {block} with block_size {}", self.block_size);
         let mut pos = self.sequence.get(block);
-        let mut temp_string = String::new();
+        let element = element.as_bytes();
 
-        //let mut delta: u64 = 0;
         let mut id_in_block = 0;
         let mut cshared = 0;
 
         // Read the first string in the block
         let slen = self.strlen(pos);
-        temp_string.push_str(self.pos_str(pos, slen));
+        let mut temp_string: Vec<u8> = self.packed_data[pos..pos + slen].to_vec();
         pos += slen + 1;
         id_in_block += 1;
 
@@ -174,17 +154,11 @@ impl DictSectPFC {
 
             //Copy suffix
             let slen = self.strlen(pos);
-            temp_string.truncate(temp_string.floor_char_boundary(delta));
-            temp_string.push_str(self.pos_str(pos, slen));
-            println!("in block {temp_string} with new part {}", self.pos_str(pos, slen));
+            temp_string.truncate(delta);
+            temp_string.extend_from_slice(&self.packed_data[pos..pos + slen]);
             if delta >= cshared {
-                println!("delta {delta} >= cshared {cshared}");
                 // Current delta value means that this string has a larger long common prefix than the previous one
-                let boundary = temp_string.floor_char_boundary(cshared);
-                cshared += Self::longest_common_prefix(
-                    temp_string[boundary..].as_bytes(),
-                    element[boundary..].as_bytes(),
-                );
+                cshared += Self::longest_common_prefix(&temp_string[cshared..], &element[cshared..]);
 
                 if (cshared == element.len()) && (temp_string.len() == element.len()) {
                     break;
@@ -192,16 +166,14 @@ impl DictSectPFC {
             } else {
                 // We have less common characters than before, this string is bigger that what we are looking for.
                 // i.e. Not found.
-                println!("less common characters between {temp_string} and {element}, not found");
-                //id_in_block = 0;
-                //break;
+                id_in_block = 0;
+                break;
             }
             pos += slen + 1;
             id_in_block += 1;
         }
 
         if pos >= self.packed_data.len() || id_in_block == self.block_size {
-            println!("end of block, not found");
             id_in_block = 0;
         }
         id_in_block
